@@ -1,20 +1,24 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import {
+  getData,
   setData,
+  removeData,
   resultField,
   newLotteryField,
   listField
 } from '@/helper/index';
-
 Vue.use(Vuex);
 
 export default new Vuex.Store({
   state: {
+    historyHeroId: [],
+    historyList: [],
+    lolList: [],
+    baseNum: 0,
     config: {
-      name: '年会抽奖',
-      number: 70,
-      firstPrize: 1
+      number: 0,
+      lolNumber: 2
     },
     result: {
       firstPrize: []
@@ -26,9 +30,8 @@ export default new Vuex.Store({
   mutations: {
     setClearConfig(state) {
       state.config = {
-        name: '年会抽奖',
-        number: 70,
-        firstPrize: 1
+        number: state.baseNum,
+        lolNumber: 1
       };
       state.newLottery = [];
     },
@@ -45,9 +48,8 @@ export default new Vuex.Store({
     },
     setClearStore(state) {
       state.config = {
-        name: '年会抽奖',
-        number: 70,
-        firstPrize: 1
+        number: state.baseNum,
+        lolNumber: 1
       };
       state.result = {
         firstPrize: []
@@ -87,6 +89,44 @@ export default new Vuex.Store({
     },
     setPhotos(state, photos) {
       state.photos = photos;
+    },
+    setInfo(state, data) {
+      state.baseNum = data.length;
+      state.config.number = data.length;
+      state.config.lolNumber =
+        (getData('config') && getData('config').lolNumber) || 1;
+      state.lolList = data.map(item => {
+        return {
+          key: item.heroId,
+          name: item.name,
+          photo: `https://game.gtimg.cn/images/lol/act/img/champion/${item.alias}.png`
+        };
+      });
+    },
+    setHistoryHeroId(state, data) {
+      const arr = state.historyHeroId.concat(data);
+      state.historyHeroId = Array.from(new Set(arr));
+      setData('historyHeroId', state.historyHeroId);
+    },
+
+    setHistoryList(state, data) {
+      state.historyList = data;
+      setData('historyList', data);
+    },
+
+    getHistory(state) {
+      state.historyList = getData('historyList') || [];
+    },
+
+    getHistoryHeroId(state) {
+      state.historyHeroId = getData('historyHeroId') || [];
+    },
+
+    clearHistory(state) {
+      state.historyHeroId = [];
+      state.historyList = [];
+      removeData('historyHeroId');
+      removeData('historyList');
     }
   },
   actions: {},

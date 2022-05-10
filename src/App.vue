@@ -1,154 +1,65 @@
 <template>
   <div id="root">
-    <header>
-      <Publicity v-show="!running" />
-      <el-button class="res" type="text" @click="showResult = true">
-        抽奖结果
-      </el-button>
-      <el-button class="con" type="text" @click="showConfig = true">
-        抽奖配置
-      </el-button>
-    </header>
+    <el-button class="con" type="text" @click="showConfig = true">
+      随机配置
+    </el-button>
+    <div class="title-kaer">
+      <div class="text1">地球不爆炸</div>
+      <div class="text2">卡尔不放假</div>
+    </div>
     <div id="main" :class="{ mask: showRes }"></div>
     <div id="tags">
-      <ul v-for="item in datas" :key="item.key">
+      <ul v-for="item in lolList" :key="item.key">
         <li>
           <a
             href="javascript:void(0);"
             :style="{
               color: '#fff',
+              display: 'flex'
             }"
           >
-            {{ item.name ? item.name : item.key }}
             <img v-if="item.photo" :src="item.photo" :width="50" :height="50" />
           </a>
         </li>
       </ul>
     </div>
     <transition name="bounce">
-      <div id="resbox" v-show="showRes">
-        <p @click="showRes = false">{{ categoryName }}抽奖结果：</p>
+      <div id="resbox" v-show="showRes" @click="showRes = false">
+        <p>随机结果</p>
         <div class="container">
-          <span
-            v-for="item in resArr"
-            :key="item"
-            class="itemres"
-            :style="resCardStyle"
-            :data-id="item"
-            @click="showRes = false"
-            :class="{
-              numberOver:
-                !!photos.find((d) => d.id === item) ||
-                !!list.find((d) => d.key === item),
-            }"
-          >
-            <span class="cont" v-if="!photos.find((d) => d.id === item)">
-              <span
-                v-if="!!list.find((d) => d.key === item)"
-                :style="{
-                  fontSize: '40px',
-                }"
-              >
-                {{ list.find((d) => d.key === item).name }}
-              </span>
-              <span v-else>
-                {{ item }}
-              </span>
-            </span>
-            <img
-              v-if="photos.find((d) => d.id === item)"
-              :src="photos.find((d) => d.id === item).value"
-              alt="photo"
-              :width="160"
-              :height="160"
-            />
-          </span>
+          <div v-for="item in resArr" :key="item.key" class="lol-show">
+            <div class="img">
+              <img :src="item.photo" alt="" />
+            </div>
+            <div>{{ item.name }}</div>
+          </div>
         </div>
       </div>
     </transition>
 
-    <el-button
-      class="audio"
-      type="text"
-      @click="
-        () => {
-          playAudio(!audioPlaying);
-        }
-      "
-    >
-      <i
-        class="iconfont"
-        :class="[audioPlaying ? 'iconstop' : 'iconplay1']"
-      ></i>
-    </el-button>
-
-    <LotteryConfig :visible.sync="showConfig" @resetconfig="reloadTagCanvas" />
-    <Tool
-      @toggle="toggle"
-      @resetConfig="reloadTagCanvas"
-      @getPhoto="getPhoto"
-      :running="running"
-      :closeRes="closeRes"
-    />
-    <Result :visible.sync="showResult"></Result>
-
-    <span class="copy-right">
-      Copyright©zhangyongfeng5350@gmail.com
-    </span>
-
-    <audio
-      id="audiobg"
-      preload="auto"
-      controls
-      autoplay
-      loop
-      @play="playHandler"
-      @pause="pauseHandler"
-    >
-      <source :src="audioSrc" />
-      你的浏览器不支持audio标签
-    </audio>
+    <LotteryConfig :visible.sync="showConfig" />
+    <Tool @toggle="toggle" :running="running" />
   </div>
 </template>
 <script>
 import LotteryConfig from '@/components/LotteryConfig';
-import Publicity from '@/components/Publicity';
 import Tool from '@/components/Tool';
-import bgaudio from '@/assets/bg.mp3';
-import beginaudio from '@/assets/begin.mp3';
-import {
-  getData,
-  configField,
-  resultField,
-  newLotteryField,
-  conversionCategoryName,
-  listField,
-} from '@/helper/index';
+import { getData } from '@/helper/index';
 import { luckydrawHandler } from '@/helper/algorithm';
-import Result from '@/components/Result';
-import { database, DB_STORE_NAME } from '@/helper/db';
+
 export default {
   name: 'App',
-
-  components: { LotteryConfig, Publicity, Tool, Result },
-
+  components: { LotteryConfig, Tool },
   computed: {
-    resCardStyle() {
-      const style = { fontSize: '30px' };
-      const { number } = this.config;
-      if (number < 100) {
-        style.fontSize = '100px';
-      } else if (number < 1000) {
-        style.fontSize = '80px';
-      } else if (number < 10000) {
-        style.fontSize = '60px';
+    lolList: {
+      get() {
+        return this.$store.state.lolList;
       }
-      return style;
     },
     config: {
       get() {
         return this.$store.state.config;
-      },
+      }
     },
     result: {
       get() {
@@ -156,99 +67,26 @@ export default {
       },
       set(val) {
         this.$store.commit('setResult', val);
-      },
-    },
-    list() {
-      return this.$store.state.list;
-    },
-    allresult() {
-      let allresult = [];
-      for (const key in this.result) {
-        if (this.result.hasOwnProperty(key)) {
-          const element = this.result[key];
-          allresult = allresult.concat(element);
-        }
       }
-      return allresult;
     },
-    datas() {
-      const { number } = this.config;
-      const nums = number >= 1500 ? 500 : this.config.number;
-      const configNum = number > 1500 ? Math.floor(number / 3) : number;
-      const randomShowNums = luckydrawHandler(configNum, [], nums);
-      const randomShowDatas = randomShowNums.map((item) => {
-        const listData = this.list.find((d) => d.key === item);
-        const photo = this.photos.find((d) => d.id === item);
-        return {
-          key: item * (number > 1500 ? 3 : 1),
-          name: listData ? listData.name : '',
-          photo: photo ? photo.value : '',
-        };
-      });
-      return randomShowDatas;
-    },
-    categoryName() {
-      return conversionCategoryName(this.category);
-    },
-    photos() {
-      return this.$store.state.photos;
-    },
-  },
-  created() {
-    const data = getData(configField);
-    if (data) {
-      this.$store.commit('setConfig', Object.assign({}, data));
-    }
-    const result = getData(resultField);
-    if (result) {
-      this.$store.commit('setResult', result);
-    }
-
-    const newLottery = getData(newLotteryField);
-    if (newLottery) {
-      const config = this.config;
-      newLottery.forEach((item) => {
-        this.$store.commit('setNewLottery', item);
-        if (!config[item.key]) {
-          this.$set(config, item.key, 0);
-        }
-      });
-      this.$store.commit('setConfig', config);
-    }
-
-    const list = getData(listField);
-    if (list) {
-      this.$store.commit('setList', list);
+    historyHeroId: {
+      get() {
+        return this.$store.state.historyHeroId;
+      }
     }
   },
-
   data() {
     return {
       running: false,
       showRes: false,
       showConfig: false,
-      showResult: false,
-      resArr: [],
-      category: '',
-      audioPlaying: false,
-      audioSrc: bgaudio,
+      resArr: []
     };
   },
-  watch: {
-    photos: {
-      deep: true,
-      handler() {
-        this.$nextTick(() => {
-          this.reloadTagCanvas();
-        });
-      },
-    },
-  },
   mounted() {
+    this.$store.commit('getHistoryHeroId');
+    this.$store.commit('getHistory');
     this.startTagCanvas();
-    setTimeout(() => {
-      this.getPhoto();
-    }, 1000);
     window.addEventListener('resize', this.reportWindowSize);
   },
   beforeDestroy() {
@@ -262,32 +100,7 @@ export default {
       }
       this.startTagCanvas();
     },
-    playHandler() {
-      this.audioPlaying = true;
-    },
-    pauseHandler() {
-      this.audioPlaying = false;
-    },
-    playAudio(type) {
-      if (type) {
-        this.$el.querySelector('#audiobg').play();
-      } else {
-        this.$el.querySelector('#audiobg').pause();
-      }
-    },
-    loadAudio() {
-      this.$el.querySelector('#audiobg').load();
-      this.$nextTick(() => {
-        this.$el.querySelector('#audiobg').play();
-      });
-    },
-    getPhoto() {
-      database.getAll(DB_STORE_NAME).then((res) => {
-        if (res && res.length > 0) {
-          this.$store.commit('setPhotos', res);
-        }
-      });
-    },
+
     speed() {
       return [0.1 * Math.random() + 0.01, -(0.1 * Math.random() + 0.01)];
     },
@@ -307,7 +120,7 @@ export default {
         dragControl: 1,
         textHeight: 20,
         noSelect: true,
-        lock: 'xy',
+        lock: 'xy'
       });
     },
     reloadTagCanvas() {
@@ -316,90 +129,86 @@ export default {
     closeRes() {
       this.showRes = false;
     },
-    toggle(form) {
-      const { speed, config } = this;
+    // 停止关闭
+    toggle() {
+      const { speed } = this;
       if (this.running) {
-        this.audioSrc = bgaudio;
-        this.loadAudio();
-
         window.TagCanvas.SetSpeed('rootcanvas', speed());
         this.showRes = true;
         this.running = !this.running;
         this.$nextTick(() => {
           this.reloadTagCanvas();
         });
-      } else {
-        this.showRes = false;
-        if (!form) {
-          return;
-        }
-
-        this.audioSrc = beginaudio;
-        this.loadAudio();
-
-        const { number } = config;
-        const { category, mode, qty, remain, allin } = form;
-        let num = 1;
-        if (mode === 1 || mode === 5) {
-          num = mode;
-        } else if (mode === 0) {
-          num = remain;
-        } else if (mode === 99) {
-          num = qty;
-        }
-        const resArr = luckydrawHandler(
-          number,
-          allin ? [] : this.allresult,
-          num
+        // 开始抽奖逻辑
+        const currentHeroId = luckydrawHandler(
+          this.lolList,
+          this.historyHeroId,
+          this.config.lolNumber
         );
-        this.resArr = resArr;
-
-        this.category = category;
-        if (!this.result[category]) {
-          this.$set(this.result, category, []);
-        }
-        const oldRes = this.result[category] || [];
-        const data = Object.assign({}, this.result, {
-          [category]: oldRes.concat(resArr),
-        });
-        this.result = data;
+        this.getCurrentHero(currentHeroId);
+        this.$store.commit('setHistoryHeroId', currentHeroId);
+      } else {
         window.TagCanvas.SetSpeed('rootcanvas', [5, 1]);
         this.running = !this.running;
+        this.showRes = false;
       }
     },
-  },
+    // 获取当前的营销
+    getCurrentHero(arr) {
+      this.resArr = this.lolList.filter(item => arr.includes(item.key));
+      // 根据时间存取一份
+      const myDate = new Date().toLocaleString();
+      const historyList = getData('historyList') || [];
+      const obj = {
+        time: myDate,
+        list: this.resArr
+      };
+      historyList.unshift(obj);
+      this.$store.commit('setHistoryList', historyList);
+    }
+  }
 };
 </script>
 <style lang="scss">
+.title-kaer {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  width: 300px;
+  height: 100px;
+  font-size: 50px;
+  font-weight: 700;
+  font-style: oblique;
+  .text1 {
+    background: linear-gradient(to right, #fff, #fff);
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  .text2 {
+    background: linear-gradient(to right, #fae198, #de78c6);
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+}
 #root {
   height: 100%;
-  position: relative;
-  background-image: url('./assets/bg1.jpg');
-  background-size: 100% 100%;
-  background-position: center center;
+  background-color: #000;
+  background: url('./assets/300.jpg');
   background-repeat: no-repeat;
-  background-color: #121936;
+  background-size: 100% 100%;
   .mask {
     -webkit-filter: blur(5px);
     filter: blur(5px);
   }
-  header {
-    height: 50px;
-    line-height: 50px;
-    position: relative;
-    .el-button {
-      position: absolute;
-      top: 17px;
-      padding: 0;
-      z-index: 9999;
-      &.con {
-        right: 20px;
-      }
-      &.res {
-        right: 100px;
-      }
-    }
+
+  .con {
+    right: 20px;
+    position: absolute;
+    top: 17px;
+    padding: 0;
+    z-index: 10;
   }
+
   .audio {
     position: absolute;
     top: 100px;
@@ -438,11 +247,13 @@ export default {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 1280px;
   transform: translateX(-50%) translateY(-50%);
   text-align: center;
+  min-width: 80%;
+  max-height: 75%;
+  overflow: auto;
   p {
-    color: red;
+    color: #409eff;
     font-size: 50px;
     line-height: 120px;
   }
@@ -450,6 +261,23 @@ export default {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
+  }
+  .lol-show {
+    margin: 20px;
+    .img {
+      background: #fff;
+      padding: 10px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+    }
+    img {
+      width: 100px;
+      height: 100px;
+    }
+    div {
+      color: #fff;
+      font-weight: 600;
+    }
   }
   .itemres {
     background: #fff;
