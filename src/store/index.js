@@ -31,7 +31,7 @@ export default new Vuex.Store({
     setClearConfig(state) {
       state.config = {
         number: state.baseNum,
-        lolNumber: 1
+        lolNumber: 2
       };
       state.newLottery = [];
     },
@@ -49,7 +49,7 @@ export default new Vuex.Store({
     setClearStore(state) {
       state.config = {
         number: state.baseNum,
-        lolNumber: 1
+        lolNumber: 2
       };
       state.result = {
         firstPrize: []
@@ -94,7 +94,7 @@ export default new Vuex.Store({
       state.baseNum = data.length;
       state.config.number = data.length;
       state.config.lolNumber =
-        (getData('config') && getData('config').lolNumber) || 1;
+        (getData('config') && getData('config').lolNumber) || 2;
       state.lolList = data.map(item => {
         return {
           key: item.heroId,
