@@ -6,9 +6,12 @@
     <el-button size="mini" @click="drawer = true">
       历史记录
     </el-button>
+    <el-button size="mini" @click="notRandomLoL = true">
+      剩余英雄
+    </el-button>
     <el-drawer
       append-to-body
-      title="历史记录"
+      :title="'历史记录 (已抽中' + historyHeroId.length + '个）'"
       :visible.sync="drawer"
       :direction="direction"
     >
@@ -46,6 +49,38 @@
         </div>
       </div>
     </el-drawer>
+    <el-drawer
+      append-to-body
+      :title="'未抽中的英雄 (剩余' + notRandomLoLList.length + '个）'"
+      :visible.sync="notRandomLoL"
+      :direction="direction"
+    >
+      <div class="demo-drawer__content">
+        <div class="demo-drawer__main">
+          <template v-if="notRandomLoLList.length">
+            <div class="box">
+              <div class="list">
+                <div class="list-box">
+                  <div
+                    v-for="(j, index) in notRandomLoLList"
+                    :key="index"
+                    class="list-photo"
+                  >
+                    <img :src="j.photo" alt="" />
+                    <div>{{ j.name }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <div class="no-list">
+              英雄已被全部随机完了~~~
+            </div>
+          </template>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -65,19 +100,32 @@ export default {
         return this.$store.state.historyHeroId;
       }
     },
+    lolList: {
+      get() {
+        return this.$store.state.lolList;
+      }
+    },
     config: {
       get() {
         return this.$store.state.config;
+      }
+    },
+    notRandomLoLList: {
+      get() {
+        const nodraws = this.lolList.filter(
+          item => !this.historyHeroId.includes(item.key)
+        );
+        return nodraws;
       }
     }
   },
   data() {
     return {
       drawer: false,
+      notRandomLoL: false,
       direction: 'rtl'
     };
   },
-
   methods: {
     startHandler() {
       if (this.historyHeroId.length >= this.config.number) {
